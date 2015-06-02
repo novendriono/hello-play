@@ -1,0 +1,3 @@
+
+GET   /products controllers.ProductCtrl.list
+POST  /products controllers.ProductCtrl.add
