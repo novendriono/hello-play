@@ -2,51 +2,77 @@ package controllers
 
 import play.api.mvc._
 import play.api.libs.json._
-import play.api.libs.functional.syntax._
+import play.api.data.validation.ValidationError
 
 import models.Product
-import models.ProductRepository
 import models.ProductId
 
+import repository.AnormProductRepository
+
+import scala.concurrent.Future
 
 object ProductCtrl extends Controller {
 
+  val productRepository = new AnormProductRepository
+
+  def badRequest(errors: Seq[(JsPath, Seq[ValidationError])]) = BadRequest(Json.obj("status" -> "Error", "message" -> JsError.toFlatJson(errors)))
+
   implicit val productIdReads : Reads[ProductId] = (JsPath).read[String].map(ProductId(_))
+  implicit val productIdWrite : Writes[ProductId] = Writes[ProductId](productId => JsString(productId.value))
+  implicit val productFormat = Json.format[Product]
 
-  implicit val productReads : Reads[Product] = (
-    (JsPath \ "id").read[ProductId] and
-    (JsPath \ "name").read[String] and
-    (JsPath \ "width").readNullable[Int] and
-    (JsPath \ "height").readNullable[Int] and
-    (JsPath \ "weight").readNullable[Int] 
-  )(Product.apply _)
-
-  implicit val productWrites = new Writes[Product]  {
-    def writes(product: Product) = Json.obj(
-      "id" -> product.productId.value,
-      "name" -> product.name,
-      "width" -> product.width,
-      "height" -> product.height,
-      "weight" -> product.weight
-    )
-  }
-
-  def list = Action.async { implicit request => 
-    ProductRepository.findAll() map {
-      case products:List[Product] => Ok(Json.toJson(Json.obj( "offset" -> 0, "limit" -> 10, "result" -> products)))
+  def list(offset:Int, limit:Int)  = Action.async { implicit request => 
+    productRepository.findAll(offset, limit) map {
+      case (total: Int, products:List[Product]) => Ok(Json.toJson(Json.obj(
+        "offset" -> offset,
+        "limit" -> limit,
+        "total" -> total,
+        "result" -> products)))
       case  _ => NoContent
     }
   }
 
-  def add = Action(BodyParsers.parse.json) { implicit request =>
+  def get(id: String) = Action.async { implicit request =>
+    productRepository.findById(ProductId(id)) map {
+      case Some(product:Product) => Ok(Json.toJson(product))
+      case _ => NotFound
+    }
+  }
+
+  def add = Action.async(BodyParsers.parse.json) { implicit request =>
     val productResult = request.body.validate[Product]
     productResult.fold(
       errors => {
-        BadRequest(Json.obj("status" -> "Error", "message" ->JsError.toFlatJson(errors)))
+        Future[Result]{BadRequest(Json.obj("status" -> "Error", "message" ->JsError.toFlatJson(errors)))}
       },
       product => {
-        Status(201)(Json.obj("status" -> "OK", "message" -> "saved"))
+        productRepository.store(product) map {
+          case productId:ProductId => Created(Json.obj("status" -> "Created", "productId" -> productId.value))
+          case _ => InternalServerError("Failed to add new product")
+        }
       }
     )
+  }
+
+  def update(id: String) = Action.async(BodyParsers.parse.json) { implicit request =>
+    val productResult = request.body.validate[Product]
+    productResult.fold(
+      errors=> {
+        Future[Result]{badRequest(errors)}
+      },
+      product => {
+        productRepository.update(product) map {
+          case updated: Int if updated > 0 => Ok(Json.obj("status" -> s"Updated %s product".format(updated)))
+          case _ => NotFound
+        }
+      }
+    )
+  }
+
+  def delete(id: String) = Action.async { implicit request =>
+    productRepository.delete(ProductId(id)) map {
+      case deleted: Int if deleted > 0 => Ok(Json.obj("status" -> s"Deleted product : %s".format(id)))
+      case _ => NotFound
+    }
   }
 }
