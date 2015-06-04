@@ -14,3 +14,4 @@ Assume that the repository methods are async; it is required to use the Future a
 Other than this, you are free to come up with your own implementation decisions, including defining the product model schema.
 
 Bonus question: Unit testing of the repository object.
+

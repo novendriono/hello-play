@@ -9,3 +9,4 @@ libraryDependencies ++= Seq(
   anorm
 )
 
+transitiveClassifiers := Seq("sources")

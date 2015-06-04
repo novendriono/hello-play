@@ -1,7 +1,6 @@
-
 # Products
-GET     /products       controllers.ProductCtrl.list(offset: Int ?= 0, limit: Int ?= 10)
-GET     /products/:id   controllers.ProductCtrl.get(id: String)
-POST    /products       controllers.ProductCtrl.add
-PUT     /products/:id   controllers.ProductCtrl.update(id: String)
-DELETE  /products/:id   controllers.ProductCtrl.delete(id: String)
+GET     /v1/products            controllers.product.ProductController.list(offset: Int ?= 0, limit: Int ?= 10)
+GET     /v1/products/:id        controllers.product.ProductController.get(id: String)
+POST    /v1/products            controllers.product.ProductController.add
+PUT     /v1/products/:id        controllers.product.ProductController.update(id: String)
+DELETE  /v1/products/:id        controllers.product.ProductController.delete(id: String)
