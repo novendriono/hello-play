@@ -11,10 +11,3 @@ trait ProductRepository {
   def delete(id:ProductId) : Future[Int]
 }
 
-trait VariantRepository {
-  def findById(id: VariantId) : Future[Option[Variant]]
-  def findByProductId(productId: ProductId) : Future[(Int, List[Variant])]
-  def store(variant:Variant) : Future[VariantId]
-  def update(variant:Variant) : Future[Int]
-  def delete(id:VariantId) : Future[Int]
-}
